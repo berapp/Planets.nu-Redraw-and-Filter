@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name        Redraw and Filter
+// @name        Planets.nu Redraw and Filter
 // @author      Kero van Gelder
 // @copyright   Kero van Gelder, 2015 - 2021
 // @license     Lesser Gnu Public License, version 3
@@ -12,12 +12,12 @@
 // @include     http://*.planets.nu/*
 // @include     https://*.planets.nu/*
 // @require     https://chmeee.org/ext/planets.nu/McNimblesToolkit-1.2.6.user.js
-// @version     0.12.8
+// @version     2026.7.1
 // @grant       none
 // ==/UserScript==
 
-var name = "Redraw and Filter";
-var version = "0.12.8";
+var name = "Planets.nu Redraw and Filter";
+var version = "2026.7.1";
 
 var deleteFromArray = function(array, element) {
     var index = array.indexOf(element);
