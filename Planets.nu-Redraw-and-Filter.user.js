@@ -3,21 +3,22 @@
 // @author      Kero van Gelder
 // @copyright   Kero van Gelder, 2015 - 2021
 // @license     Lesser Gnu Public License, version 3
-// @homepage    https://chmeee.org/#planets.nu/RedrawAndFilter
-// @downloadURL https://chmeee.org/ext/planets.nu/RedrawAndFilter.user.js
+// @homepage    https://github.com/berapp
 // @description For planets.nu -- More clarity on the map; allow to filter what is shown
-// @namespace   kero/planets.nu
+// @namespace https://github.com/berapp
+// @downloadURL https://github.com/berapp/Planets.nu-Redraw-and-Filter/edit/main/Planets.nu-Redraw-and-Filter.user.js
+// @updateURL https://github.com/berapp/Planets.nu-Redraw-and-Filter/edit/main/Planets.nu-Redraw-and-Filter.user.js
 // @include     http://planets.nu/*
 // @include     https://planets.nu/*
 // @include     http://*.planets.nu/*
 // @include     https://*.planets.nu/*
 // @require     https://chmeee.org/ext/planets.nu/McNimblesToolkit-1.2.6.user.js
-// @version     2026.7.1
+// @version     2026.7.2
 // @grant       none
 // ==/UserScript==
 
 var name = "Planets.nu Redraw and Filter";
-var version = "2026.7.1";
+var version = "2026.7.2";
 
 var deleteFromArray = function(array, element) {
     var index = array.indexOf(element);
