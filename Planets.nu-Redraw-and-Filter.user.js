@@ -13,12 +13,13 @@
 // @include     http://*.planets.nu/*
 // @include     https://*.planets.nu/*
 // @require     https://chmeee.org/ext/planets.nu/McNimblesToolkit-1.2.6.user.js
-// @version     2026.7.2
+// @version     2026.8.1
 // @grant       none
 // ==/UserScript==
 
 var name = "Planets.nu Redraw and Filter";
-var version = "2026.7.2";
+var version = "2026.8.1";
+var debug = true;
 
 var deleteFromArray = function(array, element) {
     var index = array.indexOf(element);
@@ -136,6 +137,7 @@ redraw = {
     },
 
     collectPlanetResources: function(planet) {
+        if (debug) console.log("collectPlanetResources");
         var ownerid = planet.ownerid;
         if (!redraw["showPlayer"+ownerid]) return;
 
@@ -146,6 +148,13 @@ redraw = {
                 // planet has no ammo
             } else if (resource == "Temp") {
                 location.temp = planet.temp;
+            } else if (resource == "Surface") {
+                // Combined surface minerals (Duranium + Tritanium + Molybdenum)
+                var amount = (planet.duranium || 0) + (planet.tritanium || 0) + (planet.molybdenum || 0);
+                if (amount > 0) {
+                    if (!location.surface) location.surface = 0;
+                    location.surface += amount;
+                }
             } else {
                 var name = resource.toLowerCase();
 
@@ -165,7 +174,8 @@ redraw = {
         })
     },
 
-    collectStarbaseResources: function(starbase) {
+  collectStarbaseResources: function (starbase) {
+      if (debug) console.log("collectStarbaseResources");
         var planet = vgap.getPlanet(starbase.planetid);
         var ownerid = planet.ownerid;
         if (!redraw["showPlayer"+ownerid]) return;
@@ -197,7 +207,8 @@ redraw = {
         });
     },
 
-    collectShipResources: function(ship) {
+  collectShipResources: function (ship) {
+      if (debug) console.log("collectShipResources");
         var ownerid = ship.ownerid;
         if (!redraw["showPlayer"+ownerid]) return;
 
@@ -215,6 +226,13 @@ redraw = {
                     location.ammo[index] += ship.ammo;
                 } else if (resource == "Temp") {
                     // ships have no temp
+                } else if (resource == "Surface") {
+                    var amount = (ship.duranium || 0) + (ship.tritanium || 0) + (ship.molybdenum || 0)
+                               + (ship.transferduranium || 0) + (ship.transfertritanium || 0) + (ship.transfermolybdenum || 0);
+                    if (amount > 0) {
+                        if (!location.surface) location.surface = 0;
+                        location.surface += amount;
+                    }
                 } else {
                     var name = resource.toLowerCase();
 
@@ -304,39 +322,48 @@ redraw = {
         return location;
     },
 
-    detailedInfo: function(loc, nextTurnLoc, nextTurnShips, resource) {
+    detailedInfo: function (loc, nextTurnLoc, nextTurnShips, resource) {
+        if (debug) console.log("detailedInfo");
         var locIsEmpty = function(location) {
             return !location.planet && (!location.ships || location.ships.length == 0);
         }
         var total = 0,
             nextTurnTotal = 0;
 
-        // Planets can have "unknown" supplies, which is encoded as -1
-        if (loc.planet && loc.planet[resource] >= 0) total = loc.planet[resource];
+        var getAmount = function(obj, res) {
+            if (!obj) return 0;
+            if (res === "surface") {
+                return (obj.duranium || 0) + (obj.tritanium || 0) + (obj.molybdenum || 0)
+                     + (obj.transferduranium || 0) + (obj.transfertritanium || 0) + (obj.transfermolybdenum || 0);
+            }
+            var amount = obj[res];
+            // Planets can have "unknown" supplies (and similar), encoded as -1
+            if (amount < 0) return 0;
+            return amount || 0;
+        };
+
+        if (loc.planet) total = getAmount(loc.planet, resource);
         if (loc.ships) loc.ships.forEach(function(ship) {
-            total += ship[resource];
-            total += ship["transfer"+resource];
+            total += getAmount(ship, resource);
         });
 
-        if (nextTurnLoc.planet && nextTurnLoc.planet[resource] >= 0) nextTurnTotal = nextTurnLoc.planet[resource];
+        if (nextTurnLoc.planet) nextTurnTotal = getAmount(nextTurnLoc.planet, resource);
         if (nextTurnLoc.ships) nextTurnLoc.ships.forEach(function(ship) {
-            nextTurnTotal += ship[resource];
-            nextTurnTotal += ship["transfer"+resource];  // failed transfer? command for a future turn?
+            nextTurnTotal += getAmount(ship, resource);
         });
 
         // For all objects, even those that move away, compute deltas
         var deltas = [];
         if (loc.planet && nextTurnLoc.planet) {
-            var amount = loc.planet[resource];
-            if (amount < 0) amount = 0;
-            var nextTurnAmount = nextTurnLoc.planet[resource];
-            if (nextTurnAmount < 0) nextTurnAmount = 0;
+            var amount = getAmount(loc.planet, resource);
+            var nextTurnAmount = getAmount(nextTurnLoc.planet, resource);
             var delta = nextTurnAmount - amount;
             if (delta != 0) deltas.push(delta);
         }
         if (loc.ships) loc.ships.forEach(function(ship) {
             var nextTurnShip = nextTurnShips[Math.abs(ship.id)];
-            var delta = nextTurnShip[resource] + nextTurnShip["transfer"+resource] - ship[resource] - ship["transfer"+resource]
+            if (!nextTurnShip) return;
+            var delta = getAmount(nextTurnShip, resource) - getAmount(ship, resource);
             if (delta != 0) deltas.push(delta);
         });
 
@@ -344,10 +371,10 @@ redraw = {
         if (total > 0) result += total;
         var cumulative = total;
         deltas.forEach(function(delta) {
-            result += delta > 0 ? "+"+delta : delta;
+            result += delta > 0 ? "+" + delta : delta;
             cumulative += delta;
         });
-        if (!locIsEmpty(nextTurnLoc) && cumulative != nextTurnTotal) result += "→"+nextTurnTotal;
+        if (!locIsEmpty(nextTurnLoc) && cumulative != nextTurnTotal) result += "→" + nextTurnTotal;
 
         if (result.length == 0) return undefined;
         return result;
@@ -369,7 +396,9 @@ redraw = {
         "Clans",
         "Nativeclans",
         "Ammo",
-        "Temp"
+        "Temp",
+        "Surface",
+        "Goldenrod"
     ],
 
     resource2Color: {
@@ -382,7 +411,9 @@ redraw = {
         "Clans": "rgb(255, 128, 255)",
         "Nativeclans": "rgb(200, 200, 200)",
         "Ammo": "rgb(255, 0, 0)",
-        "Temp": "rgb(128, 64, 128)"
+        "Temp": "rgb(128, 64, 128)",
+        "Surface": "lime",
+        "Goldenrod": "rgb(218, 165, 32)",
     },
 
     colorForResource: function(resource) {
@@ -778,7 +809,9 @@ var resource2Icon = {
     "Clans": {icon: "\uf0c0", fontClass: "fas"},
     "Nativeclans": {icon: "\uf0c0", fontClass: "fas"},
     "Ammo": {icon: "\uf1d1", fontClass: "fab"},
-    "Temp": {icon: "\uf2c9", fontClass: "fas"}
+    "Temp": {icon: "\uf2c9", fontClass: "fas"},
+    "Surface": {icon: "\uf5fd", fontClass: "fas"},
+    "Goldenrod": {icon: "\uf2c9", fontClass: "fas"},
 };
 
 var resource2Short = {
@@ -792,6 +825,8 @@ var resource2Short = {
     "Nativeclans": "Nat",
     "Ammo": "Amm",
     "Temp": "Temp",
+    "Surface": "Surf",
+    "Goldenrod": "Gold",
 };
 
 redrawAndFilter.initialize = function() {
@@ -1392,8 +1427,16 @@ redrawAndFilter.drawResources = function(nowEchoCluster, nextTurnEchoCluster, ne
         var y = vgap.map.screenY(location.y);
         model.resources.forEach(function(resource) {
             if (model["show"+resource]) {
-                var radius = 0;
-                if (resource == "Nativeclans") {
+              var radius = 0;
+                if (resource == "Goldenrod") {
+                  radius = 10;
+                  if ((location.temp >= 45) && (location.temp <= 55)) {
+                      var color = tempColor(location.temp);
+                      McN_Tk.drawNonoverlappingText(location.x, location.y, "" + location.temp, color);
+                      McN_Tk.drawMapCircle(location.x, location.y, radius, color);
+                  }
+                }
+                else if (resource == "Nativeclans") {
                     if (location.nativeclans > 0) {
                         var planet = vgap.planetAt(location.x, location.y);
                         if (planet) {
@@ -1428,8 +1471,24 @@ redrawAndFilter.drawResources = function(nowEchoCluster, nextTurnEchoCluster, ne
                 } else if (resource == "Temp") {
                     if (location.temp >= 0) {
                         var color = tempColor(location.temp);
-                        McN_Tk.drawNonoverlappingText(location.x, location.y, ""+location.temp, color);
+                        McN_Tk.drawNonoverlappingText(location.x, location.y, "" + location.temp, color);
+                        McN_Tk.drawMapCircle(location.x, location.y, 10, color);
                     }
+                } else if (resource == "Surface") {
+                    // Combined surface minerals (already summed into location.surface during collection)
+                    radius = Math.sqrt(location.surface || 0) / scale;
+
+                    if (onlyOneResourceShown && nowEchoCluster) {
+                        var info = redraw.detailedInfo(
+                            blup(nowEchoCluster.findObjects(location.x, location.y, 0)),
+                            blup(nextTurnEchoCluster.findObjects(location.x, location.y, 0)),
+                            nextTurnShips,
+                            "surface"
+                        );
+                        if (info) McN_Tk.drawNonoverlappingText(location.x, location.y, info, redraw.colorForResource(resource));
+                    }
+
+                    if (radius > 0) McN_Tk.drawMapCircle(location.x, location.y, radius, redraw.colorForResource(resource));
                 } else {
                     radius = Math.sqrt(location[resource.toLowerCase()]) / scale;
                     if (resource == "Clans") {
@@ -1498,27 +1557,49 @@ function maxMCRadius() {
 
 function tempColor(temperature) {
     var red, green, blue;
+
+    // Helper to clamp a value to 0–255
+    function clamp(v) {
+        return Math.max(0, Math.min(255, Math.round(v)));
+    }
+
     if (vgap.player.raceid == 7) {
+        // Crystal Confederation – blue → cyan progression
         red = 28 + temperature;
         green = 28 + temperature;
         blue = 228 - temperature;
         if (temperature == 0) blue = 255;
     } else {
-        red = 128 + temperature - 50;
-        green = 128;
-        blue = 128 - temperature + 50;
-        if (temperature < 15 && vgap.player.raceid != 10) {
-            red -= 50;
-            green -= 50;
-            blue += 50;
-        }
-        if (temperature >= 85) {
-            red += 50;
-            green -= 50;
-            blue -= 50;
+        // Normal races
+        if (temperature >= 45 && temperature <= 55) {
+            // Goldenrod for the temperate “sweet spot”
+            red = 218;
+            green = 165;
+            blue = 32;
+        } else {
+            red = 128 + temperature - 50;
+            green = 128;
+            blue = 128 - temperature + 50;
+
+            if (temperature < 15 && vgap.player.raceid != 10) {
+                red -= 50;
+                green -= 50;
+                blue += 50;
+            }
+            if (temperature >= 85) {
+                red += 50;
+                green -= 50;
+                blue -= 50;
+            }
         }
     }
-    return "rgb("+red+", "+green+", "+blue+")";
+
+    // Clamp all channels
+    red = clamp(red);
+    green = clamp(green);
+    blue = clamp(blue);
+
+    return "rgb(" + red + ", " + green + ", " + blue + ")";
 }
 
 redrawAndFilter.drawShipLocations = function() {
