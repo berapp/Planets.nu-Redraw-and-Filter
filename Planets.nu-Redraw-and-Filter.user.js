@@ -13,12 +13,12 @@
 // @include     http://*.planets.nu/*
 // @include     https://*.planets.nu/*
 // @require     https://chmeee.org/ext/planets.nu/McNimblesToolkit-1.2.6.user.js
-// @version     2026.8.1
+// @version     2026.8.2
 // @grant       none
 // ==/UserScript==
 
 var name = "Planets.nu Redraw and Filter";
-var version = "2026.8.1";
+var version = "2026.8.2";
 var debug = true;
 
 var deleteFromArray = function(array, element) {
@@ -154,6 +154,63 @@ redraw = {
                 if (amount > 0) {
                     if (!location.surface) location.surface = 0;
                     location.surface += amount;
+                }
+            } else if (resource == "NotDevNatives" ||
+                       resource == "NotDevNoNatives" ||
+                       resource == "UnderDevNatives" ||
+                       resource == "UnderDevNoNatives" ||
+                       resource == "CanBuildStarbase") {
+                // Planetary Management planet-list filters, as map overlays (owned planets only)
+                if (planet.ownerid != vgap.player.id) {
+                    // skip non-owned
+                } else if (resource == "CanBuildStarbase") {
+                    // pmviewcode 10: enough surface resources to build a starbase, and none present
+                    if (vgap.getStarbase(planet.id) == null) {
+                        var mcSup = (planet.megacredits || 0) + (planet.supplies || 0);
+                        var canNormal =
+                            mcSup >= 900 &&
+                            (planet.duranium || 0) >= 120 &&
+                            (planet.tritanium || 0) >= 402 &&
+                            (planet.molybdenum || 0) >= 340;
+                        var canDebris =
+                            planet.debrisdisk > 0 &&
+                            mcSup >= 480 &&
+                            (planet.duranium || 0) >= 70 &&
+                            (planet.tritanium || 0) >= 242 &&
+                            (planet.molybdenum || 0) >= 160;
+                        if (canNormal || canDebris) {
+                            location.canbuildstarbase = mcSup;
+                        }
+                    }
+                } else {
+                    // Development filters share: significant known ground minerals
+                    var groundTotal =
+                        (planet.groundduranium || 0) +
+                        (planet.groundtritanium || 0) +
+                        (planet.groundmolybdenum || 0);
+                    var groundKnown = planet.groundduranium >= 0;
+                    if (groundKnown && groundTotal >= 2000) {
+                        // pmviewcode 14: Not Developed with Natives
+                        if (resource == "NotDevNatives" &&
+                            planet.clans < 15 && planet.nativeclans > 0) {
+                            location.notdevnatives = groundTotal;
+                        }
+                        // pmviewcode 13: Not Developed without Natives
+                        if (resource == "NotDevNoNatives" &&
+                            planet.clans < 15 && planet.nativeclans == 0) {
+                            location.notdevnonatives = groundTotal;
+                        }
+                        // pmviewcode 12: Under Developed with Natives
+                        if (resource == "UnderDevNatives" &&
+                            planet.clans < 75 && planet.nativeclans > 0) {
+                            location.underdevnatives = groundTotal;
+                        }
+                        // pmviewcode 11: Under Developed without Natives
+                        if (resource == "UnderDevNoNatives" &&
+                            planet.clans < 75 && planet.nativeclans == 0) {
+                            location.underdevnonatives = groundTotal;
+                        }
+                    }
                 }
             } else {
                 var name = resource.toLowerCase();
@@ -398,7 +455,12 @@ redraw = {
         "Ammo",
         "Temp",
         "Surface",
-        "Goldenrod"
+        "Goldenrod",
+        "NotDevNatives",
+        "NotDevNoNatives",
+        "UnderDevNatives",
+        "UnderDevNoNatives",
+        "CanBuildStarbase"
     ],
 
     resource2Color: {
@@ -414,6 +476,11 @@ redraw = {
         "Temp": "rgb(128, 64, 128)",
         "Surface": "lime",
         "Goldenrod": "rgb(218, 165, 32)",
+        "NotDevNatives": "rgb(255, 140, 0)",
+        "NotDevNoNatives": "rgb(255, 69, 0)",
+        "UnderDevNatives": "rgb(255, 200, 50)",
+        "UnderDevNoNatives": "rgb(218, 165, 32)",
+        "CanBuildStarbase": "rgb(0, 191, 255)",
     },
 
     colorForResource: function(resource) {
@@ -812,6 +879,11 @@ var resource2Icon = {
     "Temp": {icon: "\uf2c9", fontClass: "fas"},
     "Surface": {icon: "\uf5fd", fontClass: "fas"},
     "Goldenrod": {icon: "\uf2c9", fontClass: "fas"},
+    "NotDevNatives": {icon: "\uf06a", fontClass: "fas"},
+    "NotDevNoNatives": {icon: "\uf057", fontClass: "fas"},
+    "UnderDevNatives": {icon: "\uf071", fontClass: "fas"},
+    "UnderDevNoNatives": {icon: "\uf12a", fontClass: "fas"},
+    "CanBuildStarbase": {icon: "\uf015", fontClass: "fas"},
 };
 
 var resource2Short = {
@@ -827,6 +899,11 @@ var resource2Short = {
     "Temp": "Temp",
     "Surface": "Surf",
     "Goldenrod": "Gold",
+    "NotDevNatives": "NDN",
+    "NotDevNoNatives": "ND0",
+    "UnderDevNatives": "UDN",
+    "UnderDevNoNatives": "UD0",
+    "CanBuildStarbase": "SBS",
 };
 
 redrawAndFilter.initialize = function() {
@@ -1434,6 +1511,20 @@ redrawAndFilter.drawResources = function(nowEchoCluster, nextTurnEchoCluster, ne
                       var color = tempColor(location.temp);
                       McN_Tk.drawNonoverlappingText(location.x, location.y, "" + location.temp, color);
                       McN_Tk.drawMapCircle(location.x, location.y, radius, color);
+                  }
+                }
+                else if (resource == "NotDevNatives" ||
+                         resource == "NotDevNoNatives" ||
+                         resource == "UnderDevNatives" ||
+                         resource == "UnderDevNoNatives" ||
+                         resource == "CanBuildStarbase") {
+                  // Planetary Management planet filters as map highlights
+                  var locKey = resource.toLowerCase();
+                  if (location[locKey] > 0) {
+                      var color = redraw.colorForResource(resource);
+                      var short = resource2Short[resource];
+                      McN_Tk.drawNonoverlappingText(location.x, location.y, short + " " + location[locKey], color);
+                      McN_Tk.drawMapCircle(location.x, location.y, 12, color);
                   }
                 }
                 else if (resource == "Nativeclans") {
