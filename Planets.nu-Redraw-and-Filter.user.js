@@ -1425,6 +1425,12 @@ function canHyp(ship) {
     return canHullHyp(ship.hullid);
 }
 
+function drawThickCircle(x, y, radius, color, thickness) {
+    for (var i = 0; i < thickness; i++) {
+        McN_Tk.drawMapCircle(x, y, radius + i, color);
+    }
+}
+
 redrawAndFilter.oneButLastWaypointFor = function(ship) {
     if (ship.waypoints.length > 1) {
         var index = ship.waypoints.length - 2;
@@ -1510,7 +1516,8 @@ redrawAndFilter.drawResources = function(nowEchoCluster, nextTurnEchoCluster, ne
                   if ((location.temp >= 45) && (location.temp <= 55)) {
                       var color = tempColor(location.temp);
                       McN_Tk.drawNonoverlappingText(location.x, location.y, "" + location.temp, color);
-                      McN_Tk.drawMapCircle(location.x, location.y, radius, color);
+                      // drawThickCircle(location.x, location.y, radius, color, 5);
+                      McN_Tk.drawMapCircle(location.x, location.y, radius, color, 5);
                   }
                 }
                 else if (resource == "NotDevNatives" ||
