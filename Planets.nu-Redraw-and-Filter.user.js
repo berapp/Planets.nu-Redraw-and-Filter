@@ -13,12 +13,12 @@
 // @include     http://*.planets.nu/*
 // @include     https://*.planets.nu/*
 // @require     https://chmeee.org/ext/planets.nu/McNimblesToolkit-1.2.6.user.js
-// @version     2026.8.3
+// @version     2026.8.4
 // @grant       none
 // ==/UserScript==
 
 var name = "Planets.nu Redraw and Filter";
-var version = "2026.8.3";
+var version = "2026.8.4";
 var debug = true;
 
 var deleteFromArray = function(array, element) {
@@ -1512,12 +1512,12 @@ redrawAndFilter.drawResources = function(nowEchoCluster, nextTurnEchoCluster, ne
             if (model["show"+resource]) {
               var radius = 0;
                 if (resource == "Goldenrod") {
-                  radius = 10;
+                  radius = 13;
                   if ((location.temp >= 45) && (location.temp <= 55)) {
                       var color = tempColor(location.temp);
                       McN_Tk.drawNonoverlappingText(location.x, location.y, "" + location.temp, color);
                       // drawThickCircle(location.x, location.y, radius, color, 5);
-                      McN_Tk.drawMapCircle(location.x, location.y, radius, color, 5);
+                      McN_Tk.drawMapCircle(location.x, location.y, radius, color, 7);
                   }
                 }
                 else if (resource == "NotDevNatives" ||
