@@ -13,12 +13,12 @@
 // @include     http://*.planets.nu/*
 // @include     https://*.planets.nu/*
 // @require     https://chmeee.org/ext/planets.nu/McNimblesToolkit-1.2.6.user.js
-// @version     2026.8.4
+// @version     2026.8.24.1
 // @grant       none
 // ==/UserScript==
 
 var name = "Planets.nu Redraw and Filter";
-var version = "2026.8.4";
+var version = "2026.8.24.1";
 var debug = true;
 
 var deleteFromArray = function(array, element) {
