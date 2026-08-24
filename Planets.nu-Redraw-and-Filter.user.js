@@ -192,22 +192,22 @@ redraw = {
                     if (groundKnown && groundTotal >= 2000) {
                         // pmviewcode 14: Not Developed with Natives
                         if (resource == "NotDevNatives" &&
-                            planet.clans < 15 && planet.nativeclans > 0) {
+                            ((planet.clans < 20) || (planet.mines < 20)) && planet.nativeclans > 0) {
                             location.notdevnatives = groundTotal;
                         }
                         // pmviewcode 13: Not Developed without Natives
                         if (resource == "NotDevNoNatives" &&
-                            planet.clans < 15 && planet.nativeclans == 0) {
+                            ((planet.clans < 20) || (planet.mines < 20)) && planet.nativeclans == 0) {
                             location.notdevnonatives = groundTotal;
                         }
                         // pmviewcode 12: Under Developed with Natives
                         if (resource == "UnderDevNatives" &&
-                            planet.clans < 75 && planet.nativeclans > 0) {
+                            ((planet.clans < 100) || (planet.mines < 100)) && planet.nativeclans > 0) {
                             location.underdevnatives = groundTotal;
                         }
                         // pmviewcode 11: Under Developed without Natives
                         if (resource == "UnderDevNoNatives" &&
-                            planet.clans < 75 && planet.nativeclans == 0) {
+                            ((planet.clans < 100) || (planet.mines < 100)) && planet.nativeclans == 0) {
                             location.underdevnonatives = groundTotal;
                         }
                     }
