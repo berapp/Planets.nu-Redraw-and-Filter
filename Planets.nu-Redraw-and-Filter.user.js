@@ -13,12 +13,12 @@
 // @include     http://*.planets.nu/*
 // @include     https://*.planets.nu/*
 // @require     https://chmeee.org/ext/planets.nu/McNimblesToolkit-1.2.6.user.js
-// @version     2026.8.24.1
+// @version     2026.11.17.1
 // @grant       none
 // ==/UserScript==
 
 var name = "Planets.nu Redraw and Filter";
-var version = "2026.8.24.1";
+var version = "2026.11.17.1";
 var debug = true;
 
 var deleteFromArray = function(array, element) {
@@ -483,6 +483,19 @@ redraw = {
         "CanBuildStarbase": "rgb(0, 191, 255)",
     },
 
+    // Resource currently hovered in the Resource Toggles menu (shown temporarily)
+    hoverResource: null,
+
+    isResourceShown: function(resource) {
+        return redraw["show"+resource] || redraw.hoverResource === resource;
+    },
+
+    setHoverResource: function(resource) {
+        if (redraw.hoverResource === resource) return;
+        redraw.hoverResource = resource;
+        vgap.map.draw();
+    },
+
     colorForResource: function(resource) {
         return redraw.resource2Color[resource];
     },
@@ -723,7 +736,7 @@ var drawPlanet = function(planet) {
 
     if (!map.showresources && map.zoom >= 0.5 && model.showPlanet(planet)) {
         model.resources.forEach(function(resource) {
-            if (model["show"+resource]) {
+            if (model.isResourceShown(resource)) {
                 var inGround = planet["ground"+resource.toLowerCase()];
                 if (inGround > 0) {
                     var radius = Math.sqrt(inGround) / scale;
@@ -1080,7 +1093,40 @@ redrawAndFilter.initialize = function() {
         bg: 'darkblue',
         action: function() {
             McN_Tk.createMenu(resourceToggles);
+            addResourceHoverPreview();
         }
+    });
+};
+
+// While the mouse is over a resource toggle, show that resource on the map.
+// Clicking still toggles it permanently.
+// Uses delegated handlers on the document, so it doesn't depend on McN Toolkit internals
+// and keeps working when the menu is closed and re-opened.
+var resourceForMenuElement = function(el) {
+    var $el = $(el);
+    // Mobile layout: <div title='Neutronium'>icon</div>
+    var title = $el.attr("title");
+    if (title && redraw.resources.indexOf(title) >= 0) return title;
+    // Desktop layout: <li><a>Neut</a></li> inside .rafMenus
+    var text = $el.children("a").first().text();
+    if (!text) return null;
+    for (var i = 0; i < redraw.resources.length; i++) {
+        if (resource2Short[redraw.resources[i]] === text) return redraw.resources[i];
+    }
+    return null;
+};
+
+var resourceHoverPreviewInstalled = false;
+var addResourceHoverPreview = function() {
+    redraw.setHoverResource(null);
+    if (resourceHoverPreviewInstalled) return;
+    resourceHoverPreviewInstalled = true;
+
+    $(document).on("mouseenter", ".rafMenus li, div[title]", function() {
+        var resource = resourceForMenuElement(this);
+        if (resource) redraw.setHoverResource(resource);
+    }).on("mouseleave", ".rafMenus li, div[title]", function() {
+        if (resourceForMenuElement(this)) redraw.setHoverResource(null);
     });
 };
 
@@ -1498,7 +1544,7 @@ redrawAndFilter.drawResources = function(nowEchoCluster, nextTurnEchoCluster, ne
     var model = redrawAndFilter.model;
 
     var activeResources = model.resources.filter(function(resource) {
-        return model["show"+resource];
+        return model.isResourceShown(resource);
     });
     var onlyOneResourceShown = activeResources.length == 1;
     if (onlyOneResourceShown) {
@@ -1509,7 +1555,7 @@ redrawAndFilter.drawResources = function(nowEchoCluster, nextTurnEchoCluster, ne
         var x = vgap.map.screenX(location.x);
         var y = vgap.map.screenY(location.y);
         model.resources.forEach(function(resource) {
-            if (model["show"+resource]) {
+            if (model.isResourceShown(resource)) {
               var radius = 0;
                 if (resource == "Goldenrod") {
                   radius = 13;
